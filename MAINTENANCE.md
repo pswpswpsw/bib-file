@@ -45,6 +45,14 @@ To sync references from all projects in your local Overleaf Dropbox folder:
 - Merges valid entries into `panlab.bib`.
 - Skips files named `panlab.bib` to prevent self-merging.
 
+### 3. Cleaning Internal Duplicates
+To verify and clean duplicate entries within `panlab.bib` itself:
+
+```bash
+python3 update_bib.py --main panlab.bib --out panlab_clean.bib
+```
+If no `--new` file is provided, the script scans `panlab.bib` for duplicate titles, keeps the best version (Published > Preprint), and removes the others.
+
 ## Deduplication Logic
 
 The scripts use `update_bib.py` to handle merging. The logic is:

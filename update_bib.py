@@ -5,6 +5,7 @@ from bibtexparser.bwriter import BibTexWriter
 import re
 import argparse
 import sys
+from collections import defaultdict
 
 def normalize_title(title):
     """Normalize title for comparison: lowercase, remove non-alphanumeric."""
@@ -92,25 +93,84 @@ def save_bib(db, output_file):
     with open(output_file, 'w') as bibtex_file:
         bibtex_file.write(writer.write(db))
 
+def deduplicate_db(db):
+    """Deduplicate entries within a single DB."""
+    # Build a map of normalized title -> list of indices
+    title_map = defaultdict(list)
+    for i, entry in enumerate(db.entries):
+        if 'title' in entry:
+            norm_title = normalize_title(entry['title'])
+            if norm_title:
+                title_map[norm_title].append(i)
+                
+    indices_to_remove = set()
+    removed_count = 0
+    
+    for norm_title, indices in title_map.items():
+        if len(indices) > 1:
+            # We have duplicates. Decide which one to keep.
+            # Strategy: Prefer Published > arXiv. If equal, prefer the one with more fields? Or just the first one?
+            # Let's simple pick the "best" one and mark others for removal.
+            
+            best_index = -1
+            best_is_pub = False
+            
+            # First pass: find the best one
+            for idx in indices:
+                entry = db.entries[idx]
+                is_pub = is_published(entry)
+                
+                if best_index == -1:
+                    best_index = idx
+                    best_is_pub = is_pub
+                else:
+                    if is_pub and not best_is_pub:
+                        best_index = idx
+                        best_is_pub = True
+                    # If both are pub or both not, we keep the first one encountered (stable) 
+                    # OR we could check for field count/completeness.
+            
+            # Second pass: mark others for removal
+            for idx in indices:
+                if idx != best_index:
+                    indices_to_remove.add(idx)
+                    removed_count += 1
+                    
+    # Rebuild entries list excluding removed indices
+    # Sort indices in descending order to pop safely? Or just build a new list
+    new_entries = [entry for i, entry in enumerate(db.entries) if i not in indices_to_remove]
+    db.entries = new_entries
+    
+    return removed_count
+
 def update_bib(original_file, new_file, output_file):
-    original_db = load_bib(original_file)
-    new_db = load_bib(new_file)
+    if new_file:
+        original_db = load_bib(original_file)
+        new_db = load_bib(new_file)
+        
+        added, replaced, skipped = merge_db(original_db, new_db)
+        
+        print(f"\nSummary (Merge):")
+        print(f"Original entries: {len(original_db.entries) - added}")
+        print(f"Added: {added}")
+        print(f"Replaced: {replaced}")
+        print(f"Skipped (Duplicates): {skipped}")
+    else:
+        # If no new file, just load original for self-dedup
+        original_db = load_bib(original_file)
+        
+    print("Running self-deduplication on the result...")
+    removed = deduplicate_db(original_db)
+    print(f"Removed {removed} internal duplicates.")
     
-    added, replaced, skipped = merge_db(original_db, new_db)
-    
-    print(f"\nSummary:")
-    print(f"Original entries: {len(original_db.entries) - added}")
-    print(f"Added: {added}")
-    print(f"Replaced: {replaced}")
-    print(f"Skipped (Duplicates): {skipped}")
     print(f"Total entries: {len(original_db.entries)}")
     
     save_bib(original_db, output_file)
-        
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Update BibTeX file avoiding duplicates.')
     parser.add_argument('--main', default='panlab.bib', help='Main BibTeX file')
-    parser.add_argument('--new', required=True, help='New entries BibTeX file')
+    parser.add_argument('--new', help='New entries BibTeX file (optional)')
     parser.add_argument('--out', default='panlab_updated.bib', help='Output file')
     
     args = parser.parse_args()
