@@ -24,3 +24,8 @@ python3 update_bib.py --main panlab.bib --out panlab.bib
 ## Documentation
 
 See [MAINTENANCE.md](MAINTENANCE.md) for detailed instructions and troubleshooting.
+
+## Agent Workflows
+
+This repo has a custom workflow at `.agent/workflows/update-bibliography.md`. Use `/update-bibliography` in the AI chat to trigger it.
+
