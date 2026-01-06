@@ -143,6 +143,52 @@ def deduplicate_db(db):
     
     return removed_count
 
+def deduplicate_db_by_id(db):
+    """Deduplicate entries within a single DB based on BibTeX ID."""
+    id_map = defaultdict(list)
+    for i, entry in enumerate(db.entries):
+        if 'ID' in entry:
+            id_map[entry['ID']].append(i)
+                
+    indices_to_remove = set()
+    removed_count = 0
+    
+    for eid, indices in id_map.items():
+        if len(indices) > 1:
+            # We have duplicate IDs.
+            # Strategy: Prefer Published > arXiv. If equal, prefer the one with more fields.
+            
+            best_index = -1
+            best_score = -1
+            
+            # Simple scoring function
+            def score_entry(entry):
+                score = 0
+                if is_published(entry): score += 10
+                score += len(entry.keys()) # More fields = better?
+                return score
+            
+            # First pass: find the best one
+            for idx in indices:
+                entry = db.entries[idx]
+                score = score_entry(entry)
+                
+                if best_index == -1 or score > best_score:
+                    best_index = idx
+                    best_score = score
+            
+            # Second pass: mark others for removal
+            for idx in indices:
+                if idx != best_index:
+                    indices_to_remove.add(idx)
+                    removed_count += 1
+                    
+    # Rebuild entries list excluding removed indices
+    new_entries = [entry for i, entry in enumerate(db.entries) if i not in indices_to_remove]
+    db.entries = new_entries
+    
+    return removed_count
+
 def update_bib(original_file, new_file, output_file):
     if new_file:
         original_db = load_bib(original_file)
@@ -159,9 +205,13 @@ def update_bib(original_file, new_file, output_file):
         # If no new file, just load original for self-dedup
         original_db = load_bib(original_file)
         
-    print("Running self-deduplication on the result...")
-    removed = deduplicate_db(original_db)
-    print(f"Removed {removed} internal duplicates.")
+    print("Running self-deduplication (Title match)...")
+    removed_title = deduplicate_db(original_db)
+    print(f"Removed {removed_title} internal duplicates (Title match).")
+
+    print("Running self-deduplication (ID match)...")
+    removed_id = deduplicate_db_by_id(original_db)
+    print(f"Removed {removed_id} internal duplicates (ID match).")
     
     print(f"Total entries: {len(original_db.entries)}")
     
