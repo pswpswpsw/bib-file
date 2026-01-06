@@ -144,11 +144,12 @@ def deduplicate_db(db):
     return removed_count
 
 def deduplicate_db_by_id(db):
-    """Deduplicate entries within a single DB based on BibTeX ID."""
+    """Deduplicate entries within a single DB based on BibTeX ID (case-insensitive)."""
     id_map = defaultdict(list)
     for i, entry in enumerate(db.entries):
         if 'ID' in entry:
-            id_map[entry['ID']].append(i)
+            # BibTeX keys are case-insensitive
+            id_map[entry['ID'].lower()].append(i)
                 
     indices_to_remove = set()
     removed_count = 0
