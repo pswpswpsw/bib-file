@@ -71,3 +71,14 @@ The scripts use `update_bib.py` to handle merging. The logic is:
 - `update_bib.py`: The core python logic for merging.
 - `add_bib.sh`: Helper script for the single-file workflow.
 - `sync_overleaf.py`: Helper script for the bulk sync workflow.
+
+## Lessons Learned
+
+### Non-Standard Entry Types
+`bibtexparser` silently skips entries with non-standard types like `@software`, `@softmisc`. These must be added manually as `@misc`.
+
+### Citation Key Mapping
+When a paper reports "missing citation", the entry usually EXISTS under a different ID due to deduplication. Search by title to find the correct key.
+
+### Agent Workflow
+For agent-specific instructions, see `.agent/workflows/update-bibliography.md`.
