@@ -21,7 +21,7 @@ python3 update_bib.py --main panlab.bib --out panlab.bib
 
 ### 1. Deduplication Logic
 - **Title-based**: Entries are matched by normalized titles (lowercase, alphanumeric only)
-- **ID-based**: Entries with same BibTeX key are deduplicated
+- **ID-based**: Entries with same BibTeX key are deduplicated (**case-insensitive** - `Tu2014` = `tu2014`)
 - **Priority**: Published versions (journal/conference) are preferred over arXiv/preprints
 
 ### 2. Known Limitations
